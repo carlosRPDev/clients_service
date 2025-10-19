@@ -1,0 +1,61 @@
+# Dockerfile.dev
+
+# Dockerfile.dev
+
+FROM ruby:3.2.8-bullseye
+
+# Instalación de dependencias de sistema
+RUN apt-get clean && apt-get update --allow-insecure-repositories || true && \
+  apt-get install -y --no-install-recommends \
+  build-essential \
+  unzip \
+  libaio1 \
+  libnss3 \
+  libssl-dev \
+  zlib1g-dev \
+  libxml2-dev \
+  libxslt1-dev \
+  gnupg2 \
+  ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Crear directorio para Oracle Instant Client
+RUN mkdir -p /opt/oracle
+
+# Copiar Instant Client Basic y SDK
+COPY instantclient-basiclite-linux.x64-23.26.0.0.0.zip /opt/oracle/
+COPY instantclient-sdk-linux.x64-23.26.0.0.0.zip /opt/oracle/
+
+# Descomprimir y crear link simbólico
+RUN cd /opt/oracle && \
+  unzip -q -o instantclient-basiclite-linux.x64-23.26.0.0.0.zip && \
+  unzip -q -o instantclient-sdk-linux.x64-23.26.0.0.0.zip && \
+  rm -f *.zip
+
+
+# Configurar variables de entorno para Oracle
+ENV ORACLE_HOME=/opt/oracle/instantclient_23_26
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH=$ORACLE_HOME:$PATH
+
+# Directorio de la aplicación
+WORKDIR /app
+
+# Copiar Gemfiles primero para aprovechar cache
+COPY Gemfile* ./
+
+# Instalar Bundler versión correcta
+RUN gem install bundler -v 2.7.2
+
+# Instalar gems
+RUN bundle install
+RUN rails generate rspec:install
+
+# Copiar el resto de la app
+COPY . .
+
+ENV NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+
+# Comando por defecto
+CMD ["bash", "-c", "rm -f tmp/pids/server.pid && rails server -b 0.0.0.0 -p 3000"]
+
