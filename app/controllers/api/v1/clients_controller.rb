@@ -19,7 +19,7 @@ module Api
       end
 
       def create
-        client = Clients::CreateClient.new(client_params).call
+        client = CreateClient.new(client_params).call
         render json: client, status: :created
       rescue ActiveRecord::RecordInvalid => e
           render json: e.record.errors, status: :unprocessable_entity
