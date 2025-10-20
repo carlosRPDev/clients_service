@@ -7,17 +7,18 @@ module Clients
     def call
       client = Client.new(@params)
       if client.save
-        RegistrarEventoAuditoriaJob.perform_later(
-          servicio_origen: "clientes",
-          accion: "CREAR_CLIENTE",
-          detalle: client.as_json
+        RegisterEventAuditJob.perform_later(
+          origin_service: "clientes",
+          action: "CREAR_CLIENTE",
+          detail: client.as_json
         )
         client
       else
-        RegistrarEventoAuditoriaJob.perform_later(
-          servicio_origen: "clientes",
-          accion: "ERROR_CREAR_CLIENTE",
-          detalle: client.errors
+        RegisterEventAuditJob.perform_later(
+          origin_service: "clientes",
+          action: "ERROR_CREAR_CLIENTE",
+          detail: client.errors,
+          state: "FAILED"
         )
         raise ActiveRecord::RecordInvalid.new(client)
       end

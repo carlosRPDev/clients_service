@@ -7,14 +7,14 @@ module Api
 
       def show
         client = Client.find(params[:id])
-        RegistrarEventoAuditoriaJob.perform_later(
-          servicio_origen: "clientes",
-          accion: "CONSULTA_CLIENTE",
-          detalle: client.as_json
+        RegisterEventAuditJob.perform_later(
+          origin_service: "clientes",
+          action: "CONSULTA_CLIENTE",
+          detail: client.as_json
         )
         render json: client
       rescue ActiveRecord::RecordNotFound
-        RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ERROR_CONSULTA", detalle: { id: params[:id] })
+        RegisterEventAuditJob.perform_later(origin_service: "clientes", action: "ERROR_CONSULTA", detail: { id: params[:id] }, state: "NOT_FOUND")
         render json: { error: "Cliente no encontrado" }, status: :not_found
       end
 
@@ -28,10 +28,10 @@ module Api
       def update
         client = Client.find(params[:id])
         if client.update(client_params)
-          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ACTUALIZAR_CLIENTE", detalle: client.as_json)
+          RegisterEventAuditJob.perform_later(origin_service: "clientes", action: "ACTUALIZAR_CLIENTE", detail: client.as_json)
           render json: client
         else
-          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ERROR_ACTUALIZAR_CLIENTE", detalle: client.errors)
+          RegisterEventAuditJob.perform_later(origin_service: "clientes", action: "ERROR_ACTUALIZAR_CLIENTE", detail: client.errors, state: "FAILED")
           render json: client.errors, status: :unprocessable_entity
         end
       end
@@ -39,7 +39,7 @@ module Api
       def destroy
         client = Client.find(params[:id])
         client.destroy
-        RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ELIMINAR_CLIENTE", detalle: { id: client.id })
+        RegisterEventAuditJob.perform_later(origin_service: "clientes", action: "ELIMINAR_CLIENTE", detail: { id: client.id })
         head :no_content
       end
 
