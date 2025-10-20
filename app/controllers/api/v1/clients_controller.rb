@@ -2,8 +2,7 @@ module Api
   module V1
     class ClientsController < ApplicationController
       def index
-        clients = Client.all
-        render json: clients
+        render json: Client.all
       end
 
       def show
@@ -20,14 +19,28 @@ module Api
       end
 
       def create
-        client = Client.new(client_params)
-        if client.save
-          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "CREAR_CLIENTE", detalle: client.as_json)
-          render json: client, status: :created
+        client = Clients::CreateClient.new(client_params).call
+        render json: client, status: :created
+      rescue ActiveRecord::RecordInvalid => e
+          render json: e.record.errors, status: :unprocessable_entity
+      end
+
+      def update
+        client = Client.find(params[:id])
+        if client.update(client_params)
+          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ACTUALIZAR_CLIENTE", detalle: client.as_json)
+          render json: client
         else
-          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ERROR_CREAR_CLIENTE", detalle: client.errors)
+          RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ERROR_ACTUALIZAR_CLIENTE", detalle: client.errors)
           render json: client.errors, status: :unprocessable_entity
         end
+      end
+
+      def destroy
+        client = Client.find(params[:id])
+        client.destroy
+        RegistrarEventoAuditoriaJob.perform_later(servicio_origen: "clientes", accion: "ELIMINAR_CLIENTE", detalle: { id: client.id })
+        head :no_content
       end
 
       private
